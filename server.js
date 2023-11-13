@@ -6,13 +6,14 @@ const jwt = require('jsonwebtoken');
 const morgan=require('morgan')
 const dotenv=require('dotenv')
 const authRoutes=require('../Task-node/Routes/authRoutes')
+const path = require('path');
 
-dotenv.config();
+require('dotenv').config();
 const app = express();
 //middleware
 app.use(express.json());
 app.use(morgan("dev"));
-
+app.use(express.static(path.join(__dirname, 'upload')));
 //routes
 app.use("/api/v1/auth", authRoutes);
 

@@ -1,27 +1,39 @@
-const JWT = require('jsonwebtoken');
+const jwt = require('jsonwebtoken');
 const userModel=require('../Models/UserModel')
-
+const secret_key = process.env.JWT_SECRET;
 //Protected Routes token base
-const requireSignIn = async (req, res, next) => {
+
+const requireSignIn = (req, res, next) => {
   try {
-    console.log('Request Headers:', req.headers);
-    const token = req.headers.authorization;
-    console.log('Authorization Header:', token);
+      const authHeader = req.headers.authorization;
+      if (authHeader) {
+          const token = authHeader.split(' ')[1];
+          jwt.verify(token, secret_key, async (err, decoded) => {
+              // console.log(decoded.iat);
+              // console.log(decoded);
 
-    if (!token || !token.startsWith('Bearer ')) {
-      throw new Error('Token is missing or in the incorrect format');
-    }
+              if (err) {
+                  res.json({ status: false, message: "Unauthorized" });
+              } else {
+                  const user = await userModel.findOne({ _id: decoded.id });
+                  console.log(user,'dddd')
+                  if (user) {
+                      req.userId=user._id;
+                      next();
+                  } else {
+                      res.status(404).json({ status: false, message: "User not exists" })
+                  }
+              }
+          });
+      } else {
+          res.json({ status: false, message: 'Token not provided' })
+      }
+  } catch (err) {
+      res.status(401).json({ message: "Not authorized" });
 
-    const decoded = JWT.verify(token.substring(7), process.env.JWT_SECRET);
-    console.log('Decoded Token:', decoded);
-
-    req.user = decoded;
-    next();
-  } catch (error) {
-    console.error(error);
-    res.status(401).send('Unauthorized');
   }
-};
+}
+
 
 
 //admin acceess

@@ -1,8 +1,21 @@
-const JWT = require('jsonwebtoken');
+const jwt = require('jsonwebtoken');
 const userModel=require('../Models/UserModel')
 const {comparePassword , hashPassword }=require('../Helpers/authHelp')
 const fs = require('fs').promises;
 const Filemodel = require('../Models/Filemodel');
+const bcrypt = require("bcrypt");
+const maxAge = 3 * 24 * 60 * 60;
+
+const createToken = (id) => {
+  try {
+      return jwt.sign({ id }, process.env.JWT_SECRET, {
+          expiresIn: maxAge
+      });
+  } catch (error) {
+      console.error("Error while creating the JWT token:", error);
+      throw error; // Re-throw the error to handle it in the calling function
+  }
+};
 
 const registerController = async (req, res) => {
     try {
@@ -52,57 +65,42 @@ const registerController = async (req, res) => {
   };
 
   // LOGIN
-const loginController = async (req, res) => {
-    try {
-      const { email, password } = req.body;
-      
-      //validation
-      if (!email || !password) {
-        return res.status(404).send({
-          success: false,
-          message: "Invalid email or password",
-        });
-      }
-      //check user
-      const user = await userModel.findOne({ email });
-      console.log(user,'klll')
-      if (!user) {
-        return res.status(404).send({
-          success: false,
-          message: "Email is not registerd",
-        });
-      };
+const loginController = async (req, res,next) => {
+  try {
+    const { email, password } = req.body;
+    console.log(req.body, 'loginnnn')
+    // throwing error if values are not provided
+    if (!email || !password) throw Error("All Fields required");
+    // finding the user
+    const user= await userModel.findOne({ email: email });
+    console.log(user.status, "status")
+    console.log(user, 'userrr')
+    if (user) {
+        //checking user status
+        if (user) {
+            //checking user password
 
-      const match = await comparePassword(password, user.password);
-      if (!match) {
-        return res.status(200).send({
-          success: false,
-          message: "Invalid Password",
-        });
-      }
-      //token
-      const token = await JWT.sign({ _id: user._id }, process.env.JWT_SECRET, {
-        expiresIn: "7d",
-      });
-      res.status(200).send({
-        success: true,
-        message: "login successfully",
-        user: {
-          _id: user._id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-        },
-        token,
-      });
-    } catch (error) {
-      console.log(error);
-      res.status(500).send({
-        success: false,
-        message: "Error in login",
-        error,
-      });
+            const validPassword = await bcrypt.compare(password, user.password);
+            console.log(password, 'currentpass')
+            console.log(user.password, 'installed pass')
+            console.log(validPassword, 'pass')
+            if (validPassword) {
+                //creating twt token using user id
+                const token = createToken(user._id);
+                console.log(token, 'token')
+                res.status(200).json({ user, token, login: true });
+            } else {
+                res.json({ login: false, message: "Incorrect username or password" });
+            }
+        } else {
+            res.json({ status: "Blocked", message: "Account suspended" })
+        }
+    } else {
+        res.json({ message: "Email not exists", login: false })
     }
+} catch (error) {
+    next(error)
+}
   };
   
 //test controller
