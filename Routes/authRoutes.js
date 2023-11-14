@@ -16,7 +16,7 @@ router.post("/login", loginController);
 
 //test routes
 router.get("/test", requireSignIn, isAdmin, testController);
-router.post('/upload',requireSignIn, isAdmin, upload.array('files'),fileupload)
+router.post('/upload',requireSignIn, isAdmin, upload.array('file'),fileupload)
 
 
 

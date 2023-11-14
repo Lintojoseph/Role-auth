@@ -5,17 +5,26 @@ const fs = require('fs').promises;
 const Filemodel = require('../Models/Filemodel');
 const bcrypt = require("bcrypt");
 const maxAge = 3 * 24 * 60 * 60;
+const path = require('path');
+
+
 
 const createToken = (id) => {
   try {
-      return jwt.sign({ id }, process.env.JWT_SECRET, {
-          expiresIn: maxAge
-      });
+    const token = jwt.sign({ id }, process.env.JWT_SECRET, {
+      expiresIn: maxAge,algorithm: 'HS256'
+    });
+    console.log(token,'tooooooooo')
+    
+    return token;
   } catch (error) {
-      console.error("Error while creating the JWT token:", error);
-      throw error; // Re-throw the error to handle it in the calling function
+    console.error("Error while creating the JWT token:", error);
+    throw error;
   }
 };
+console.log(createToken,'fdfdfdfd')
+
+
 
 const registerController = async (req, res) => {
     try {
@@ -73,11 +82,12 @@ const loginController = async (req, res,next) => {
     if (!email || !password) throw Error("All Fields required");
     // finding the user
     const user= await userModel.findOne({ email: email });
-    console.log(user.status, "status")
+   
     console.log(user, 'userrr')
+
     if (user) {
         //checking user status
-        if (user) {
+        if (user.status) {
             //checking user password
 
             const validPassword = await bcrypt.compare(password, user.password);
@@ -88,7 +98,18 @@ const loginController = async (req, res,next) => {
                 //creating twt token using user id
                 const token = createToken(user._id);
                 console.log(token, 'token')
-                res.status(200).json({ user, token, login: true });
+                console.log(user.status, "status")
+                res.status(200).send({
+                  success: true,
+                  message: "login successfully",
+                  user: {
+                    _id: user._id,
+                    name: user.name,
+                    email: user.email,
+                    role: user.role,
+                  },
+                  token,
+                });
             } else {
                 res.json({ login: false, message: "Incorrect username or password" });
             }
@@ -128,12 +149,12 @@ const fileupload = async (req, res) => {
       const fileName = `${Date.now()}.${fileExtension}`;
 
       // Save file to local file system
-      const filePath = path.join(__dirname, 'uploads', fileName);
+      const filePath = path.join(__dirname, '..', 'upload', fileName);
       await fs.writeFile(filePath, file.buffer);
 
       // Save file metadata in MongoDB
       const fileMetadata = {
-        userId: req.user._id,
+        userId: req.userId,
         filename: fileName,
         fileType: file.mimetype,
         fileSize: file.size,
